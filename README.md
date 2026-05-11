@@ -92,6 +92,19 @@ Output: `artefact/clickhouse-<ver>-illumos-amd64.tar.gz` containing
 `bin/clickhouse` (+ the `clickhouse-*` symlinks) and `etc/config.xml`,
 `etc/users.xml`.
 
+### Prebuilt binaries
+
+Tagged builds are published as
+[GitHub releases](https://github.com/nwilkens/clickhouse-illumos-build/releases)
+with the tarball + a `.sha256`:
+
+```sh
+gh release download -R nwilkens/clickhouse-illumos-build --pattern '*.tar.gz*'
+shasum -a 256 -c clickhouse-*.tar.gz.sha256
+tar xzf clickhouse-*-illumos-amd64.tar.gz
+./bin/clickhouse --version
+```
+
 ### Smoke test
 
 ```sh
