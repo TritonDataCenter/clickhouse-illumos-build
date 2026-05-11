@@ -1,0 +1,12 @@
+diff --git a/contrib/azure/sdk/storage/azure-storage-common/inc/azure/storage/common/internal/xml_wrapper.hpp b/contrib/azure/sdk/storage/azure-storage-common/inc/azure/storage/common/internal/xml_wrapper.hpp
+index 83d2516..15dc395 100644
+--- a/contrib/azure/sdk/storage/azure-storage-common/inc/azure/storage/common/internal/xml_wrapper.hpp
++++ b/contrib/azure/sdk/storage/azure-storage-common/inc/azure/storage/common/internal/xml_wrapper.hpp
+@@ -6,6 +6,7 @@
+ #include <cstdint>
+ #include <memory>
+ #include <string>
++#include <memory>
+ 
+ namespace Azure { namespace Storage { namespace _internal {
+ 

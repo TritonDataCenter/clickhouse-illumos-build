@@ -1,0 +1,213 @@
+diff --git a/contrib/llvm-project/libcxx/include/__locale_dir/locale_base_api/musl.h b/contrib/llvm-project/libcxx/include/__locale_dir/locale_base_api/musl.h
+index 1653214cd..9eec7ae1d 100644
+--- a/contrib/llvm-project/libcxx/include/__locale_dir/locale_base_api/musl.h
++++ b/contrib/llvm-project/libcxx/include/__locale_dir/locale_base_api/musl.h
+@@ -28,4 +28,19 @@ inline _LIBCPP_HIDE_FROM_ABI unsigned long long strtoull_l(const char* __nptr, c
+   return ::strtoull(__nptr, __endptr, __base);
+ }
+ 
++#if defined(__sun)
++// illumos does not expose strtof_l/strtod_l/strtold_l. The libcxx
++// __strtof/__strtod/__strtold wrappers call them directly, so shim them
++// here using the locale-less variants (ClickHouse runs in C/POSIX).
++inline _LIBCPP_HIDE_FROM_ABI float strtof_l(const char* __nptr, char** __endptr, locale_t) {
++  return ::strtof(__nptr, __endptr);
++}
++inline _LIBCPP_HIDE_FROM_ABI double strtod_l(const char* __nptr, char** __endptr, locale_t) {
++  return ::strtod(__nptr, __endptr);
++}
++inline _LIBCPP_HIDE_FROM_ABI long double strtold_l(const char* __nptr, char** __endptr, locale_t) {
++  return ::strtold(__nptr, __endptr);
++}
++#endif // __sun
++
+ #endif // _LIBCPP___LOCALE_DIR_LOCALE_BASE_API_MUSL_H
+diff --git a/contrib/llvm-project/libcxx/include/__ranges/iota_view.h b/contrib/llvm-project/libcxx/include/__ranges/iota_view.h
+index 4b8458525..d45500e40 100644
+--- a/contrib/llvm-project/libcxx/include/__ranges/iota_view.h
++++ b/contrib/llvm-project/libcxx/include/__ranges/iota_view.h
+@@ -43,6 +43,54 @@
+ _LIBCPP_PUSH_MACROS
+ #include <__undef_macros>
+ 
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
+ _LIBCPP_BEGIN_NAMESPACE_STD
+ 
+ #if _LIBCPP_STD_VER >= 20
+diff --git a/contrib/llvm-project/libcxx/include/__ranges/join_view.h b/contrib/llvm-project/libcxx/include/__ranges/join_view.h
+index 364f056d8..9bd333d89 100644
+--- a/contrib/llvm-project/libcxx/include/__ranges/join_view.h
++++ b/contrib/llvm-project/libcxx/include/__ranges/join_view.h
+@@ -44,6 +44,54 @@
+ _LIBCPP_PUSH_MACROS
+ #include <__undef_macros>
+ 
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
++#undef __sentinel
++#undef __sentinel(X)
++
+ _LIBCPP_BEGIN_NAMESPACE_STD
+ 
+ #if _LIBCPP_STD_VER >= 20
+diff --git a/contrib/llvm-project/libcxx/src/locale.cpp b/contrib/llvm-project/libcxx/src/locale.cpp
+index da735865c..3faf6b849 100644
+--- a/contrib/llvm-project/libcxx/src/locale.cpp
++++ b/contrib/llvm-project/libcxx/src/locale.cpp
+@@ -5390,7 +5390,7 @@ void moneypunct_byname<char, true>::init(const char* nm) {
+     __frac_digits_ = lc->int_frac_digits;
+   else
+     __frac_digits_ = base::do_frac_digits();
+-#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
++#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__) || defined(__sun)
+   if (lc->p_sign_posn == 0)
+ #else  // _LIBCPP_MSVCRT
+   if (lc->int_p_sign_posn == 0)
+@@ -5398,7 +5398,7 @@ void moneypunct_byname<char, true>::init(const char* nm) {
+     __positive_sign_ = "()";
+   else
+     __positive_sign_ = lc->positive_sign;
+-#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
++#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__) || defined(__sun)
+   if (lc->n_sign_posn == 0)
+ #else  // _LIBCPP_MSVCRT
+   if (lc->int_n_sign_posn == 0)
+@@ -5410,7 +5410,7 @@ void moneypunct_byname<char, true>::init(const char* nm) {
+   // the same places in curr_symbol since there's no way to
+   // represent anything else.
+   string_type __dummy_curr_symbol = __curr_symbol_;
+-#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
++#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__) || defined(__sun)
+   __init_pat(__pos_format_, __dummy_curr_symbol, true, lc->p_cs_precedes, lc->p_sep_by_space, lc->p_sign_posn, ' ');
+   __init_pat(__neg_format_, __curr_symbol_, true, lc->n_cs_precedes, lc->n_sep_by_space, lc->n_sign_posn, ' ');
+ #else  // _LIBCPP_MSVCRT
+@@ -5507,7 +5507,7 @@ void moneypunct_byname<wchar_t, true>::init(const char* nm) {
+     __frac_digits_ = lc->int_frac_digits;
+   else
+     __frac_digits_ = base::do_frac_digits();
+-#  if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
++#  if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__) || defined(__sun)
+   if (lc->p_sign_posn == 0)
+ #  else  // _LIBCPP_MSVCRT
+   if (lc->int_p_sign_posn == 0)
+@@ -5522,7 +5522,7 @@ void moneypunct_byname<wchar_t, true>::init(const char* nm) {
+     wbe = wbuf + j;
+     __positive_sign_.assign(wbuf, wbe);
+   }
+-#  if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
++#  if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__) || defined(__sun)
+   if (lc->n_sign_posn == 0)
+ #  else  // _LIBCPP_MSVCRT
+   if (lc->int_n_sign_posn == 0)
+@@ -5541,7 +5541,7 @@ void moneypunct_byname<wchar_t, true>::init(const char* nm) {
+   // the same places in curr_symbol since there's no way to
+   // represent anything else.
+   string_type __dummy_curr_symbol = __curr_symbol_;
+-#  if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
++#  if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__) || defined(__sun)
+   __init_pat(__pos_format_, __dummy_curr_symbol, true, lc->p_cs_precedes, lc->p_sep_by_space, lc->p_sign_posn, L' ');
+   __init_pat(__neg_format_, __curr_symbol_, true, lc->n_cs_precedes, lc->n_sep_by_space, lc->n_sign_posn, L' ');
+ #  else  // _LIBCPP_MSVCRT
+diff --git a/contrib/llvm-project/libcxxabi/src/demangle/Utility.h b/contrib/llvm-project/libcxxabi/src/demangle/Utility.h
+index df5b54dca..cb1d33334 100644
+--- a/contrib/llvm-project/libcxxabi/src/demangle/Utility.h
++++ b/contrib/llvm-project/libcxxabi/src/demangle/Utility.h
+@@ -168,7 +168,7 @@ public:
+   OutputBuffer &operator<<(char C) { return (*this += C); }
+ 
+   OutputBuffer &operator<<(long long N) {
+-    return writeUnsigned(static_cast<unsigned long long>(std::abs(N)), N < 0);
++    return writeUnsigned(static_cast<unsigned long long>(std::llabs(N)), N < 0);
+   }
+ 
+   OutputBuffer &operator<<(unsigned long long N) {

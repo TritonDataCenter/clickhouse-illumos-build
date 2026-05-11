@@ -1,0 +1,13 @@
+diff --git a/contrib/abseil-cpp/absl/debugging/internal/vdso_support.h b/contrib/abseil-cpp/absl/debugging/internal/vdso_support.h
+index 6562c6c..bc0d7fd 100644
+--- a/contrib/abseil-cpp/absl/debugging/internal/vdso_support.h
++++ b/contrib/abseil-cpp/absl/debugging/internal/vdso_support.h
+@@ -48,7 +48,7 @@
+ 
+ #ifdef ABSL_HAVE_VDSO_SUPPORT
+ #error ABSL_HAVE_VDSO_SUPPORT cannot be directly set
+-#else
++#elif defined(__linux__) || defined(__FreeBSD__)
+ #define ABSL_HAVE_VDSO_SUPPORT 1
+ #endif
+ 

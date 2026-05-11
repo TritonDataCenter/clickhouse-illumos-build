@@ -1,0 +1,57 @@
+diff --git a/contrib/rocksdb/env/fs_posix.cc b/contrib/rocksdb/env/fs_posix.cc
+index 6d95d9a..55c5fc3 100644
+--- a/contrib/rocksdb/env/fs_posix.cc
++++ b/contrib/rocksdb/env/fs_posix.cc
+@@ -585,7 +585,39 @@ class PosixFileSystem : public FileSystem {
+       // filter out '.' and '..' directory entries
+       // which appear only on some platforms
+       const bool ignore =
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
++#ifndef OS_SUNOS
+           entry->d_type == DT_DIR &&
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
++#endif
+           (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0
+ #ifndef ASSERT_STATUS_CHECKED
+diff --git a/contrib/rocksdb/utilities/trace/file_trace_reader_writer.h b/contrib/rocksdb/utilities/trace/file_trace_reader_writer.h
+index 4535343..1516b7c 100644
+--- a/contrib/rocksdb/utilities/trace/file_trace_reader_writer.h
++++ b/contrib/rocksdb/utilities/trace/file_trace_reader_writer.h
+@@ -6,7 +6,7 @@
+ #pragma once
+ 
+ #include "rocksdb/trace_reader_writer.h"
+-
++#include "file/writable_file_writer.h"
+ namespace ROCKSDB_NAMESPACE {
+ 
+ class RandomAccessFileReader;
