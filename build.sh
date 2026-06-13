@@ -53,6 +53,31 @@ case "$CLANG_VER" in
 	*) fatal "ClickHouse 26.x needs clang >= 21; found $CLANG_VER (need pkgsrc trunk)" ;;
 esac
 
+# SmartOS platforms older than ~2025-05 (e.g. PI 20241112) don't declare
+# dprintf/vdprintf in <stdio.h> even though libc exports them; replxx and a few
+# other contribs use dprintf. Shadow <stdio.h> via /usr/local/include (clang's
+# first system include dir) with an #include_next wrapper. Header-level, so no
+# cmake reconfigure / rebuild is triggered. Only when the platform lacks it.
+if ! grep -q dprintf /usr/include/stdio.h 2>/dev/null; then
+	info "platform <stdio.h> lacks dprintf; installing /usr/local/include shim"
+	mkdir -p /usr/local/include
+	cat > /usr/local/include/stdio.h <<'SHIM'
+#include_next <stdio.h>
+#if (defined(__sun) || defined(__illumos__)) && !defined(_SHIM_DPRINTF)
+#define _SHIM_DPRINTF
+#include <stdarg.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern int dprintf(int, const char *, ...);
+extern int vdprintf(int, const char *, va_list);
+#ifdef __cplusplus
+}
+#endif
+#endif
+SHIM
+fi
+
 # ---------------------------------------------------------------------------
 # 2. Source: fetch + checkout the fork branch, sync submodules.
 # ---------------------------------------------------------------------------
