@@ -105,16 +105,24 @@ failed=()
 
 for f in "${patches[@]}"; do
 	name=$(basename "$f")
-	# Already applied? (reverse-applies cleanly). git apply --reverse can't
-	# see paths inside submodules, so use gpatch's dry-run reverse instead.
+	# Forward-first. The old reverse-first "already applied?" check
+	# false-positived on multi-file diffs (some hunks present upstream),
+	# silently skipping a patch that was actually still needed -- e.g. the
+	# libcxx musl.h strtof_l shim, whose absence breaks LLVMSupport. Only treat
+	# a patch as already-applied when it does NOT apply forward but DOES reverse.
+	if "$GPATCH" --directory="$CH_SRC" --dry-run --forward --batch --fuzz=5 \
+	    --strip=1 --silent --reject-file=- < "$f" >/dev/null 2>&1; then
+		if "$GPATCH" --directory="$CH_SRC" --batch --forward --fuzz=5 \
+		    --strip=1 --silent --reject-file=- < "$f" >/dev/null 2>&1; then
+			applied+=( "$name" )
+		else
+			failed+=( "$name" )
+		fi
+		continue
+	fi
 	if "$GPATCH" --directory="$CH_SRC" --dry-run --reverse --batch \
 	    --strip=1 --silent < "$f" >/dev/null 2>&1; then
 		skipped+=( "$name" )
-		continue
-	fi
-	if "$GPATCH" --directory="$CH_SRC" --batch --forward --fuzz=5 \
-	    --strip=1 --silent --reject-file=- < "$f" >/dev/null 2>&1; then
-		applied+=( "$name" )
 		continue
 	fi
 	failed+=( "$name" )
