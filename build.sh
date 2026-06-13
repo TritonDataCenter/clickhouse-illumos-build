@@ -137,9 +137,12 @@ header "configuring with cmake"
 
 njobs=$(psrinfo -t)
 mem_mb=$(/usr/sbin/prtconf -m)
-njobs_mem=$(( mem_mb / 1024 / 3 ))
+# 5 GB/job: with cores==mem/4 the old 3 GB cap pinned -j to core count (16 on
+# the 64 GB builder), and ClickHouse's heaviest TUs (3-4 GB) then oversubscribed
+# RAM, OOM-cascading the recovery loop down to -j1. 5 GB/job leaves headroom.
+njobs_mem=$(( mem_mb / 1024 / 5 ))
 if (( njobs_mem < njobs )); then
-	info "memory-bound: $mem_mb MB / 3 GB per job => $njobs_mem jobs (was $njobs)"
+	info "memory-bound: $mem_mb MB / 5 GB per job => $njobs_mem jobs (was $njobs)"
 	njobs=$njobs_mem
 fi
 (( njobs > 0 )) || njobs=1
@@ -252,10 +255,12 @@ if [[ ! -f "$stamp" ]]; then
 			info "ninja build succeeded"
 			break
 		fi
-		if [[ "${CH_LINK_RECOVERY:-0}" != "1" ]] || (( jobs <= 1 )); then
+		if [[ "${CH_LINK_RECOVERY:-0}" != "1" ]] || (( jobs <= 4 )); then
 			fatal "ninja build failed; see $WORK/ninja.log"
 		fi
-		jobs=$(( jobs / 2 )); (( jobs < 1 )) && jobs=1
+		# Floor at 4 (~20 GB): below that a failure is almost certainly a real
+		# compile error, not memory pressure, and -j1 is uselessly slow.
+		jobs=$(( jobs / 2 )); (( jobs < 4 )) && jobs=4
 		info "retrying with -j $jobs (memory pressure suspected)..."
 	done
 	touch "$stamp"
