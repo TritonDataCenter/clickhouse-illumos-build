@@ -17,9 +17,9 @@ two places:
 
 1. **Parent-repo patches** — changes to `cmake/`, `src/`, `utils/`,
    `base/poco/`, `contrib/*-cmake/`, etc. These are commits on the
-   `illumos/<line>` branch of the fork
-   **[github.com/nwilkens/ClickHouse](https://github.com/nwilkens/ClickHouse)**
-   (currently `illumos/26.3`). Manage them with normal git
+   `smartos/<line>` branch of the fork
+   **[github.com/TritonDataCenter/ClickHouse](https://github.com/TritonDataCenter/ClickHouse)**
+   (currently `smartos/26.3`). Manage them with normal git
    (`rebase` / `cherry-pick`).
 
 2. **Submodule-internal patches** — changes to files *inside* git
@@ -95,11 +95,11 @@ Output: `artefact/clickhouse-<ver>-illumos-amd64.tar.gz` containing
 ### Prebuilt binaries
 
 Tagged builds are published as
-[GitHub releases](https://github.com/nwilkens/clickhouse-illumos-build/releases)
+[GitHub releases](https://github.com/TritonDataCenter/clickhouse-illumos-build/releases)
 with the tarball + a `.sha256`:
 
 ```sh
-gh release download -R nwilkens/clickhouse-illumos-build --pattern '*.tar.gz*'
+gh release download -R TritonDataCenter/clickhouse-illumos-build --pattern '*.tar.gz*'
 shasum -a 256 -c clickhouse-*.tar.gz.sha256
 tar xzf clickhouse-*-illumos-amd64.tar.gz
 ./bin/clickhouse --version
@@ -126,19 +126,45 @@ curl -s 'http://127.0.0.1:18123/?query=SELECT+1%2B1'
 ## Bumping to a new ClickHouse release
 
 ```sh
-# in a ClickHouse checkout with `origin` = upstream and `fork` = your fork:
-git fetch origin
-git checkout -b illumos/26.4 v26.4.x.y-lts
+# in a ClickHouse checkout with `upstream` = ClickHouse/ClickHouse and
+# `origin` = TritonDataCenter/ClickHouse:
+git fetch upstream
+git checkout -b smartos/26.4 v26.4.x.y-lts
 git submodule update --init --recursive --depth 1
-git rebase --onto v26.4.x.y-lts v26.3.10.60-lts illumos/26.3   # carry the parent patches
+git rebase --onto v26.4.x.y-lts v26.3.10.60-lts smartos/26.3   # carry the parent patches
 # resolve conflicts; build; if a submodule patch no longer applies cleanly,
 # fix the file inside contrib/<name>/ by hand, then in this repo:
 #   CH_SRC=<that checkout> ./extract-submodule-patches.sh
-git push -u fork illumos/26.4
+git push -u origin smartos/26.4
 ```
 
-Then edit `config.env` (`CH_REF=illumos/26.4`, `CH_VER=26.4.x.y`) and run
+Then edit `config.env` (`CH_REF=smartos/26.4`, `CH_VER=26.4.x.y`) and run
 `build.sh` again.
+
+## Continuous integration
+
+`.github/workflows/illumos-build.yml` runs this harness on a self-hosted
+illumos builder, modelled on TritonDataCenter/mariana-trench's illumos leg:
+a Linux self-hosted runner checks out the harness, rsyncs it to the builder,
+runs `build.sh` over ssh, and scp's the tarball back as an Actions artifact
+(and, on `v*` tags, a GitHub release with a `.sha256` sidecar).
+
+Triggers: push to `main`, `v*` tags, and manual `workflow_dispatch`. One
+physical builder, so runs are serialized by a `concurrency` group.
+
+One-time setup (operator):
+
+1. **Builder zone** — a SmartOS zone on pkgsrc **trunk** (clang>=21, lld,
+   cmake>=4, ninja, nasm, gcc13>=13.4, gpatch, gtar, python3). Keep it
+   separate from the mariana-trench gcc13/quarterly Rust builder: the
+   quarterly->trunk switch cascades upgrades that can break that toolchain.
+2. **SSH** — authorize the Linux runner's key for `root@<zone>` (the runner
+   ssh's in to build).
+3. **Runner** — register the self-hosted Linux runner so this repo can use
+   it (org-level runner shared with mariana-trench, or a repo-scoped runner).
+4. **Repo variable** — set `CLICKHOUSE_BUILDER` to `root@<zone-ip>`.
+
+The workflow fails fast with a clear message if `CLICKHOUSE_BUILDER` is unset.
 
 ## What's disabled (and why)
 
