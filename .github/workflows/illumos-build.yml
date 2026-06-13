@@ -1,0 +1,74 @@
+name: illumos-build
+
+on:
+  push:
+    # illumos-ci is a temporary pre-merge trigger; drop before merge.
+    branches: [ main, illumos-ci ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+# One physical builder; queue rather than overlap.
+concurrency:
+  group: clickhouse-illumos-builder
+
+permissions:
+  contents: write
+
+jobs:
+  build-illumos:
+    runs-on: self-hosted
+    env:
+      # SmartOS zone on pkgsrc *trunk* (clang>=21, lld, cmake>=4, ninja, nasm,
+      # gcc13>=13.4). Set the repo variable CLICKHOUSE_BUILDER to root@<zone-ip>.
+      # Kept separate from the mariana-trench gcc13/quarterly Rust builder.
+      BUILDER: ${{ vars.CLICKHOUSE_BUILDER }}
+      WORKDIR: /opt/clickhouse-build
+    steps:
+      - name: Checkout harness
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # 5.0.1
+
+      - name: Sync harness to illumos builder
+        run: |
+          test -n "$BUILDER" || { echo "set the CLICKHOUSE_BUILDER repo variable (root@<zone>)"; exit 1; }
+          ssh "$BUILDER" "mkdir -p '$WORKDIR'"
+          rsync -a --delete \
+            --exclude '.git/' --exclude 'work/' --exclude 'cache/' --exclude 'artefact/' \
+            "$GITHUB_WORKSPACE/" "$BUILDER:$WORKDIR/"
+
+      - name: Build ClickHouse on illumos
+        shell: bash
+        run: |
+          # build.sh clones TritonDataCenter/ClickHouse @ smartos/26.3 (per
+          # config.env), applies the submodule patch series, configures, and
+          # builds. Warm builds reuse the kept build dir (minutes); cold ~1h.
+          ssh "$BUILDER" \
+            "export PATH=/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin:/sbin:\$PATH; cd '$WORKDIR' && bash build.sh" \
+            | tee build.log
+
+      - name: Fetch artifact from builder
+        shell: bash
+        run: |
+          mkdir -p out
+          scp "$BUILDER:$WORKDIR/artefact/clickhouse-*-illumos-amd64.tar.gz" out/
+          cd out
+          for f in clickhouse-*-illumos-amd64.tar.gz; do
+            sha256sum "$f" > "$f.sha256"
+          done
+          ls -lh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # 4.6.1
+        with:
+          name: clickhouse-illumos
+          path: out/*
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Attach to release (tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --title "$GITHUB_REF_NAME" --generate-notes || \
+          gh release upload "$GITHUB_REF_NAME" out/* --clobber
