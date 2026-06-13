@@ -53,11 +53,14 @@ case "$CLANG_VER" in
 	*) fatal "ClickHouse 26.x needs clang >= 21; found $CLANG_VER (need pkgsrc trunk)" ;;
 esac
 
-# SmartOS platforms older than ~2025-05 (e.g. PI 20241112) don't declare
-# dprintf/vdprintf in <stdio.h> even though libc exports them; replxx and a few
-# other contribs use dprintf. Shadow <stdio.h> via /usr/local/include (clang's
-# first system include dir) with an #include_next wrapper. Header-level, so no
-# cmake reconfigure / rebuild is triggered. Only when the platform lacks it.
+# SmartOS platforms older than ~2025-05 (e.g. PI 20241112) ship neither the
+# declaration nor the libc symbol for dprintf/vdprintf, which replxx (and a few
+# other contribs) use. Shadow <stdio.h> via /usr/local/include (clang's first
+# system include dir) with an #include_next wrapper that provides a
+# self-contained implementation with INTERNAL linkage -- so users both compile
+# and link without an external symbol. Header-level, so no cmake reconfigure is
+# triggered, and only the handful of dprintf-using TUs rebuild. Only installed
+# when the platform header actually lacks dprintf.
 if ! grep -q dprintf /usr/include/stdio.h 2>/dev/null; then
 	info "platform <stdio.h> lacks dprintf; installing /usr/local/include shim"
 	mkdir -p /usr/local/include
@@ -66,14 +69,33 @@ if ! grep -q dprintf /usr/include/stdio.h 2>/dev/null; then
 #if (defined(__sun) || defined(__illumos__)) && !defined(_SHIM_DPRINTF)
 #define _SHIM_DPRINTF
 #include <stdarg.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern int dprintf(int, const char *, ...);
-extern int vdprintf(int, const char *, va_list);
-#ifdef __cplusplus
+#include <stdlib.h>
+#include <unistd.h>
+__attribute__((__unused__))
+static int vdprintf(int __fd, const char *__fmt, va_list __ap) {
+	va_list __aq; va_copy(__aq, __ap);
+	int __n = vsnprintf((char *)0, 0, __fmt, __aq);
+	va_end(__aq);
+	if (__n < 0) return __n;
+	char *__b = (char *)malloc((size_t)__n + 1u);
+	if (!__b) return -1;
+	(void)vsnprintf(__b, (size_t)__n + 1u, __fmt, __ap);
+	int __o = 0;
+	while (__o < __n) {
+		ssize_t __w = write(__fd, __b + __o, (size_t)(__n - __o));
+		if (__w <= 0) { free(__b); return __o > 0 ? __o : (int)__w; }
+		__o += (int)__w;
+	}
+	free(__b);
+	return __n;
 }
-#endif
+__attribute__((__unused__))
+static int dprintf(int __fd, const char *__fmt, ...) {
+	va_list __ap; va_start(__ap, __fmt);
+	int __r = vdprintf(__fd, __fmt, __ap);
+	va_end(__ap);
+	return __r;
+}
 #endif
 SHIM
 fi
