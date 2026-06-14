@@ -2,8 +2,7 @@ name: illumos-build
 
 on:
   push:
-    # illumos-ci is a temporary pre-merge trigger; drop before merge.
-    branches: [ main, illumos-ci ]
+    branches: [ main ]
     tags: [ 'v*' ]
   workflow_dispatch:
 
